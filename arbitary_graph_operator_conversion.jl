@@ -104,25 +104,6 @@ function fermionic_X(PEPO,target)
     return normal_form(operators)
 end
 
-l = 4
-G = smallgraph(:petersen)
-# G = Graph(prim_mst(complete_graph(10)))
-# G = complete_graph(20) 
-
-PEPO = convert_to_PEPO(G, true)
-
-if (!is_connected(G))
-    throw("Not connected")
-end
-
-t = gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][2][1],sort(collect(PEPO.vertex_properties), by=x->x[1])))
-
-t = gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][1],sort(collect(PEPO.vertex_properties), by=x->x[1])))
-
-gplot(G)
-
-fermionic_XX(PEPO,1, 2)
-
 
 # Testing even fermionic algebra
 function testing_even_algebra(PEPO, G)
@@ -195,4 +176,30 @@ function testing_odd_algebra(PEPO, G)
     return total_pauli_weight/total_hopping_terms
 end
 
-testing_odd_algebra(PEPO, G)
+G = smallgraph(:petersen)
+
+PEPO = convert_to_PEPO(G, true)
+
+if (!is_connected(G))
+    throw("Not connected")
+end
+
+display(gplot(G))
+
+display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+
+display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+
+
+
+try 
+    println("Odd algebra average Pauli weight: ", testing_odd_algebra(PEPO, G))
+catch (e)
+    println("FAILED ODD ALGEBRA: $e")
+end
+
+try 
+    println("Even algebra average Pauli weight: ", testing_even_algebra(PEPO, G))
+catch (e)
+    println("FAILED EVEN ALGEBRA: $e")
+end
