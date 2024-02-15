@@ -1,0 +1,13 @@
+[deps]
+Blink = "ad839575-38b3-5650-b840-f874b8c74a25"
+Compose = "a81c6b42-2e10-5240-aca2-a61377ecd94b"
+Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+GraphPlot = "a2cc645c-3eea-5389-862e-a155d0052231"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+Interact = "c601a237-2ae4-5e1e-952c-7a85b0c7eef1"
+MetaGraphsNext = "fa8bd995-216d-47f1-8a91-f3b68fbeb377"
+Mux = "a975b10e-0019-58db-a62f-e48ff68538c9"
+QuantumAlgebra = "1b9008d5-2a9d-4901-8cfb-44bb87795b64"
+TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
+WebIO = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
