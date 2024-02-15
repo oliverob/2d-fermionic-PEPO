@@ -106,43 +106,38 @@ end
 
 
 # Testing even fermionic algebra
-function testing_even_algebra(PEPO, G)
+function testing_even_algebra(PEPO, interaction_graph)
     total_pauli_weight = 0
     total_hopping_terms = 0
-    for i in 1:nv(G)
-        for j in 1:nv(G)
-            if i == j
-                continue
-            end
-            current_hopping_term = fermionic_XX(PEPO,i, j) 
-            total_pauli_weight += length(collect(keys(current_hopping_term.terms))[1].bares.v)
-            total_hopping_terms += 1
-            for k in i:nv(G)
-                for l in j:nv(G)
-                    other_hopping_term = fermionic_XX(PEPO, k,l)
-                    if (i == k ⊻ j == l)
-                        if normal_form(comm(current_hopping_term, other_hopping_term)) == 0*one(σx())
-                            throw("Error two touching terms commute")
-                        end
-                    elseif i == l && j == k && i != j
-                        if normal_form(current_hopping_term) != -normal_form(other_hopping_term)
-                            throw("Error two opposite edges are not opposite signed $current_hopping_term, $other_hopping_term")
-                        end
-                    elseif i != k && j != l && i != l && j != k && i != j && l != k
-                        if normal_form(comm(current_hopping_term, other_hopping_term)) != 0*one(σx())
-                            throw("Error two non-touching terms anticommute $i, $j, $k, $l")
-                        end
-                    end
+    for current_edge in edges(interaction_graph)
+        i, j = src(current_edge), dst(current_edge)
+        current_hopping_term = fermionic_XX(PEPO,i, j) 
+        total_pauli_weight += length(collect(keys(current_hopping_term.terms))[1].bares.v)
+        total_hopping_terms += 1
+        for other_edge in edges(interaction_graph)
+            k, l = src(other_edge), dst(other_edge)
+            other_hopping_term = fermionic_XX(PEPO, k,l)
+            if (i == k ⊻ j == l)
+                if normal_form(comm(current_hopping_term, other_hopping_term)) == 0*one(σx())
+                    throw("Error two touching terms commute")
                 end
-                parity_term = fermionic_Z(PEPO, k)
-                if (i == k ⊻ j == k)
-                    if normal_form(comm(current_hopping_term, parity_term)) == 0*one(σx())
-                        throw("Error two touching terms commute")
-                    end
-                elseif i != k && j != k
-                    if normal_form(comm(current_hopping_term, parity_term)) != 0*one(σx())
-                        throw("Error two non-touching terms anticommute $i, $j, $k")
-                    end
+            elseif i == l && j == k && i != j
+                if normal_form(current_hopping_term) != -normal_form(other_hopping_term)
+                    throw("Error two opposite edges are not opposite signed $current_hopping_term, $other_hopping_term")
+                end
+            elseif i != k && j != l && i != l && j != k && i != j && l != k
+                if normal_form(comm(current_hopping_term, other_hopping_term)) != 0*one(σx())
+                    throw("Error two non-touching terms anticommute $i, $j, $k, $l")
+                end
+            end
+            parity_term = fermionic_Z(PEPO, k)
+            if (i == k ⊻ j == k)
+                if normal_form(comm(current_hopping_term, parity_term)) == 0*one(σx())
+                    throw("Error two touching terms commute")
+                end
+            elseif i != k && j != k
+                if normal_form(comm(current_hopping_term, parity_term)) != 0*one(σx())
+                    throw("Error two non-touching terms anticommute $i, $j, $k")
                 end
             end
         end
@@ -152,23 +147,22 @@ end
 
 
 # Testing even fermionic algebra
-function testing_odd_algebra(PEPO, G)
+function testing_odd_algebra(PEPO, interaction_graph)
     total_pauli_weight = 0
     total_hopping_terms = 0
-    for i in 1:nv(G)
+    for edge in edges(interaction_graph)
+        i, j = src(edge), dst(edge)
         current_majorana_term = fermionic_X(PEPO,i) 
         total_pauli_weight += length(collect(keys(current_majorana_term.terms))[1].bares.v)
         total_hopping_terms += 1
-        for j in i:nv(G)
-                other_majorana_term = fermionic_X(PEPO, j)
-                if (i != j)
-                    if normal_form(comm(current_majorana_term, other_majorana_term)) == 0*one(σx())
-                        throw("Error two different majoranas commute: $i, $j, $current_majorana_term, $other_majorana_term")
-                    end
-                if i == j
-                    if normal_form(comm(current_majorana_term, other_majorana_term)) != 0*one(σx())
-                        throw("Error identical majoranas anticommute $i, $j")
-                    end
+            other_majorana_term = fermionic_X(PEPO, j)
+            if (i != j)
+                if normal_form(comm(current_majorana_term, other_majorana_term)) == 0*one(σx())
+                    throw("Error two different majoranas commute: $i, $j, $current_majorana_term, $other_majorana_term")
+                end
+            if i == j
+                if normal_form(comm(current_majorana_term, other_majorana_term)) != 0*one(σx())
+                    throw("Error identical majoranas anticommute $i, $j")
                 end
             end
         end
@@ -176,30 +170,37 @@ function testing_odd_algebra(PEPO, G)
     return total_pauli_weight/total_hopping_terms
 end
 
-G = smallgraph(:petersen)
+function display_graphs(PEPO, G, interaction_graph)
+    display(gplot(G))
+    display(gplot(interaction_graph))
 
-PEPO = convert_to_PEPO(G, true)
+    display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+    
+    display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+end
+
+interaction_graph = grid([7,7])
+# G = smallgraph(:petersen)
+G = interaction_graph
+# G = Graph(prim_mst(interaction_graph))
+
+PEPO = convert_to_PEPO(G, false)
 
 if (!is_connected(G))
     throw("Not connected")
 end
 
-display(gplot(G))
-
-display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
-
-display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
-
-
+display_graphs(PEPO, G, interaction_graph)
 
 try 
-    println("Odd algebra average Pauli weight: ", testing_odd_algebra(PEPO, G))
+    println("Odd algebra average Pauli weight: ", testing_odd_algebra(PEPO, interaction_graph))
 catch (e)
     println("FAILED ODD ALGEBRA: $e")
 end
 
 try 
-    println("Even algebra average Pauli weight: ", testing_even_algebra(PEPO, G))
+    println("Even algebra average Pauli weight: ", testing_even_algebra(PEPO, interaction_graph))
 catch (e)
     println("FAILED EVEN ALGEBRA: $e")
 end
+
