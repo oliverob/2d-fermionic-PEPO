@@ -5,7 +5,7 @@ using MetaGraphsNext
 using GraphPlot, Compose
 using QuantumAlgebra
 
-export convert_to_PEPO, testing_odd_algebra, testing_even_algebra, display_graphs
+export convert_to_PEPO, testing_odd_algebra, testing_even_algebra, display_graphs, fermionic_X, fermionic_XX
 
 function convert_to_PEPO(G, defect=false)
     new_graph = MetaGraph(DiGraph(), label_type=Int, vertex_data_type=Tuple{Symbol, Int}, edge_data_type=Int)
@@ -44,23 +44,7 @@ end
 
 function fermionic_XX(PEPO, start, target)
     shortest_path = a_star(Graph(PEPO), start, target)
-
-    operators = σz()^2
-    for edge in shortest_path
-        source = src(edge) 
-        destination = dst(edge) 
-        vertex_tensor = PEPO[source][1] == :v ? source : destination
-        ghz_tensor = PEPO[source][1] == :v ? destination : source
-        vertex_neighbours = all_neighbors(PEPO, vertex_tensor)
-        z_edges_vertex = filter((x)-> has_order_higher_than_path(PEPO,vertex_tensor,ghz_tensor, x),vertex_neighbours)
-        operators *= prod(map((x)-> σz(x),z_edges_vertex))
-
-        if destination == ghz_tensor
-            operators *= has_edge(PEPO,vertex_tensor, ghz_tensor) ? 1 : -1
-            operators *= σy(ghz_tensor)
-        end
-
-    end
+    operators= fermionic_path(PEPO,shortest_path)
     return normal_form(operators)
 end
 
@@ -80,6 +64,11 @@ function fermionic_X(PEPO,target)
         throw("No defect")
     end
     shortest_path = a_star(Graph(PEPO), target, defect[1])
+    operators= fermionic_path(PEPO,shortest_path)
+    return normal_form(operators)
+end
+
+function fermionic_path(PEPO, shortest_path)
 
     operators = σz()^2
     for edge in shortest_path
@@ -103,7 +92,7 @@ function fermionic_X(PEPO,target)
             break;
         end
     end
-    return normal_form(operators)
+    return operators
 end
 
 
