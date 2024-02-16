@@ -28,6 +28,7 @@ function partial_binary_tree(n::T) where {T<:Integer}
     return SimpleGraph(ne, fadjlist)
 end
 
+
 function get_graphs(interaction_graph_selection,PEPO_graph_selection, num_of_fermions,defect)
     max_fermions = num_of_fermions
     if interaction_graph_selection == "Grid" || PEPO_graph_selection == "Grid" ||interaction_graph_selection == "Torus" ||  PEPO_graph_selection == "Torus" 
@@ -122,12 +123,14 @@ num_of_fermions = slider(1:16, readout=true)
 defect = checkbox("Defect")
 
 interactive_plot = map(refresh,interaction_graph_selection, PEPO_graph_selection,num_of_fermions,defect)
-window = Window()
+# window = Window()
 ui = vbox(hbox("Interaction graph: ", interaction_graph_selection),
 hbox("PEPO graph: ", PEPO_graph_selection),
 hbox("Number of fermions: ",num_of_fermions), 
 defect, 
 interactive_plot)
-body!(window, ui, async=false)
-refresh(interaction_graph_selection[],PEPO_graph_selection[], num_of_fermions[], defect[])
-println("")
+# body!(window, ui, async=false)
+# refresh(interaction_graph_selection[],PEPO_graph_selection[], num_of_fermions[], defect[])
+# println("")
+using Interact, Mux
+WebIO.webio_serve(page("/", req -> ui), 8001) # serve on a random port
