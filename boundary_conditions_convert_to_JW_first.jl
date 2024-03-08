@@ -1,4 +1,4 @@
-using TensorCore, Einsum
+using TensorCore
 using LinearAlgebra
 
 Z = [1 0; 0 -1]
@@ -51,40 +51,6 @@ function get_JW_matrix(i, num_of_fermions, filled, creation)
     return  JW_matrix
 end
 
-function get_spin_matrix(i, num_of_spins, filled)
-    if i > num_of_spins
-        throw("Not enough space")
-    end
-    if i <= 0
-        throw("Out of range")
-    end
-    spins_matrix = I(2)
-    site_matrix = filled ? [0 0; 0 1] : [1 0; 0 0]
-
-    if i == 1
-        spins_matrix = site_matrix
-        for j in 2:num_of_spins
-            spins_matrix=spins_matrix⊗I(2)
-        end
-    else
-        spins_matrix= I(2)
-        for j in 2:i-1
-            spins_matrix=spins_matrix⊗I(2)
-        end
-        spins_matrix = spins_matrix⊗site_matrix
-        for j in i+1:num_of_spins
-            spins_matrix=spins_matrix⊗I(2)
-        end
-    end
-
-    odd = [2*i+1 for i in 0:num_of_spins-1]
-    even = [2*i for i in 1:num_of_spins]
-    spins_matrix= permutedims(spins_matrix, cat(odd,even, dims=1))
-    spins_matrix = reshape(spins_matrix, (Int(sqrt(length(spins_matrix))),Int(sqrt(length(spins_matrix)))))
-    return spins_matrix
-end
-
-
 GHZ_tensor(j,k, num_of_fermions) = reshape( [1 0]'⊗(get_JW_matrix(j, num_of_fermions,false, false)*get_JW_matrix(k, num_of_fermions,false,false)) +
                                                             [0 1]'⊗(get_JW_matrix(j, num_of_fermions,true,false)*get_JW_matrix(k, num_of_fermions,true,false)),2,2^(num_of_fermions), 2^(num_of_fermions))
 
@@ -93,8 +59,8 @@ vertex_tensor(i,j,k, num_of_fermions) = reshape((get_JW_matrix(i, num_of_fermion
                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)+ 
                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true)),2^(num_of_fermions), 2^(num_of_fermions));
 
-X_tensor(i,num_of_fermions,num_of_spins, on) = on ? reshape(permutedims(I(2^(num_of_spins))⊗(get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,true,false) + get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,false,false)),[1,3,2,4]),2^(num_of_fermions+num_of_spins),2^(num_of_fermions+num_of_spins)) : I(2^(num_of_fermions+num_of_spins))
-Z_tensor(i,num_of_fermions,num_of_spins, on) = on ? reshape(permutedims(I(2^(num_of_spins))⊗(get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,false,false) - get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,true,false)),[1,3,2,4]),2^(num_of_fermions+num_of_spins),2^(num_of_fermions+num_of_spins)) : I(2^(num_of_fermions+num_of_spins))
+X_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,true,false) + get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,false,false) : I(2^(num_of_fermions))
+Z_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,false,false) - get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,true,false) : I(2^(num_of_fermions))
 
 function multiply_by_vacuum(MPO, num_of_fermions, num_of_physical_fermions, num_of_spins)
     reshape(reshape([j==((k-1)*2^(num_of_fermions-num_of_physical_fermions))+1 ? 1 : 0 for j in 1:2^(num_of_fermions) for k in 1:2^num_of_physical_fermions],2^num_of_physical_fermions,2^num_of_fermions)
@@ -108,14 +74,29 @@ function trace_out_fermion(tensor,is,  num_of_fermions, num_of_spins)
     for i in is
         expectation_0 = reshape(permutedims(reshape(get_JW_matrix(i, num_of_fermions,false, false)*reshape(permutedims(reshape(current_tensor*get_JW_matrix(i, num_of_fermions,false, true), 2^num_of_spins, 2^num_of_fermions, 2^num_of_fermions), [2, 3 ,1]), 2^(num_of_fermions), 2^(num_of_fermions+num_of_spins)),  2^num_of_fermions, 2^num_of_fermions, 2^num_of_spins,), [3, 1,2]), 2^(num_of_fermions+num_of_spins), 2^(num_of_fermions))
         expectation_1 = reshape(permutedims(reshape(get_JW_matrix(i, num_of_fermions,true, false)*reshape(permutedims(reshape(current_tensor*get_JW_matrix(i, num_of_fermions,true, true), 2^num_of_spins, 2^num_of_fermions, 2^num_of_fermions), [2, 3 ,1]), 2^(num_of_fermions), 2^(num_of_fermions+num_of_spins)),  2^num_of_fermions, 2^num_of_fermions, 2^num_of_spins,), [3, 1,2]), 2^(num_of_fermions+num_of_spins), 2^(num_of_fermions))
-        current_tensor = expectation_0+expectation_1
+        current_tensor = expectation_0-expectation_1
     end
     return reshape(current_tensor, size(tensor))
 end
 
+for X_defect in (false, true)
+    for Z_defect in (false, true)
+        MPO = reshape(permutedims(reshape(reshape(reshape(GHZ_tensor(1,2,6),2^7,2^6)*X_tensor(2,6,X_defect)*Z_tensor(2,6,Z_defect)*vertex_tensor(2,3,5,6)*reshape(permutedims(GHZ_tensor(3,4,6),[2,1,3]),2^6,2^7), 2^8, 2^6)*vertex_tensor(4,1,6,6),2,2^6,2, 2^6), [1,3,2,4]), 2^8, 2^6)
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[1,2,3,4],  6, 2), 6, 2, 2)
 
-# spin 2, fermions in 2^6, fermions out 2^6
-MPO = reshape(permutedims(reshape(reshape(reshape(GHZ_tensor(1,2,6),2^7,2^6)*vertex_tensor(2,3,5,6)*X_tensor(1,6,0,false)*Z_tensor(1,6,0,false)* reshape(permutedims(GHZ_tensor(3,4,6),[2,1,3]),2^6,2^7), 2^8, 2^6)*vertex_tensor(4,1,6,6),2,2^6,2, 2^6), [1,3,2,4]), 2^8, 2^6)
-MPO = reshape(trace_out_fermion(MPO,[1,2,3,4],  6, 2),2, 2, 2^2, 2^4, 2^2, 2^4)
-traced_MPO = multiply_by_vacuum(MPO, 6, 2, 2)
+        println("Defect: ", X_defect & Z_defect ? "Y" : X_defect ? "X" : Z_defect ? "Z" : "I")
 
+        reshape(permutedims(Z ⊗ Z,[1,3,2,4]),4,4)*traced_MPO == traced_MPO ? println("ZZ: +1") : println("ZZ: -1")
+        traced_MPO*reshape(permutedims(X ⊗ X,[1,3,2,4]),4,4) == traced_MPO ? println("XX: +1") : println("XX: -1")
+
+
+        translated_MPO = reshape(permutedims(reshape(reshape(reshape(GHZ_tensor(1,2,6),2^7,2^6)*X_tensor(2,6,X_defect)*Z_tensor(2,6,Z_defect)*vertex_tensor(2,3,6,6)*reshape(permutedims(GHZ_tensor(3,4,6),[2,1,3]),2^6,2^7), 2^8, 2^6)*vertex_tensor(4,1,5,6),2,2^6,2, 2^6), [1,3,2,4]), 2^8, 2^6)
+        traced_translated_MPO = reshape(permutedims(reshape(multiply_by_vacuum(trace_out_fermion(translated_MPO,[1,2,3,4],  6, 2), 6, 2, 2),2,2,2,2),[1,2,4,3]),4,4)
+        traced_translated_MPO == traced_MPO ? println("Twist: I") :
+        reshape(permutedims(Z ⊗ I(2),[1,3,2,4]),4,4)*traced_translated_MPO == traced_MPO ? println("Twist: Z") :
+        traced_translated_MPO*reshape(permutedims(I(2)⊗ X,[1,3,2,4]),4,4) == traced_MPO ? println("Twist: X") :
+        reshape(permutedims(Z ⊗ I(2),[1,3,2,4]),4,4)*traced_translated_MPO*reshape(permutedims(I(2)⊗ X,[1,3,2,4]),4,4) == traced_MPO ? println("Twist: ZX") : println()
+        
+        println()
+    end
+end
