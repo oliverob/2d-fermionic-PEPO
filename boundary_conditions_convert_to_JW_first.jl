@@ -3,7 +3,6 @@ using LinearAlgebra
 
 Z = [1 0; 0 -1]
 X = [0 1; 1 0]
-Y = [0 1; -1 0]
 
 function get_JW_matrix(i, num_of_fermions, filled, creation)
     if i > num_of_fermions
@@ -88,7 +87,6 @@ for X_defect in (false, true)
 
         reshape(permutedims(Z ⊗ Z,[1,3,2,4]),4,4)*traced_MPO == traced_MPO ? println("ZZ: +1") : println("ZZ: -1")
         traced_MPO*reshape(permutedims(X ⊗ X,[1,3,2,4]),4,4) == traced_MPO ? println("XX: +1") : println("XX: -1")
-
 
         translated_MPO = reshape(permutedims(reshape(reshape(reshape(GHZ_tensor(1,2,6),2^7,2^6)*X_tensor(2,6,X_defect)*Z_tensor(2,6,Z_defect)*vertex_tensor(2,3,6,6)*reshape(permutedims(GHZ_tensor(3,4,6),[2,1,3]),2^6,2^7), 2^8, 2^6)*vertex_tensor(4,1,5,6),2,2^6,2, 2^6), [1,3,2,4]), 2^8, 2^6)
         traced_translated_MPO = reshape(permutedims(reshape(multiply_by_vacuum(trace_out_fermion(translated_MPO,[1,2,3,4],  6, 2), 6, 2, 2),2,2,2,2),[1,2,4,3]),4,4)
