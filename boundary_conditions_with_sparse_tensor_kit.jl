@@ -82,11 +82,11 @@
 
 
     function get_1D_MPO(num_of_sites,X_defect,Z_defect,shift)
-        MPO = vertex_tensor(1,2,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites)
+        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites)
         # println(2*num_of_sites+((shift)% num_of_sites+1))
         for i in 2:num_of_sites
             # println(2*num_of_sites+((i-1+shift) % num_of_sites+1))
-            MPO *= vertex_tensor(2*(i-1)+1,2*i,2*num_of_sites+((i-1+shift) % num_of_sites+1),3*num_of_sites)
+            MPO *= vertex_tensor(2*i,2*(i-1)+1,2*num_of_sites+((i-1+shift) % num_of_sites+1),3*num_of_sites)
         end
         
         @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d]
@@ -133,11 +133,11 @@
     function twists(MPO, translated_MPO, num_of_sites)
         translated_MPO == MPO ? println("Twist: I") :
         reshape(permutedims(Z ⊗I(2^(num_of_sites-1)),[1,3,2,4]),2^(num_of_sites),2^(num_of_sites))*translated_MPO == MPO ? println("Twist: Z") :
-        translated_MPO*reshape(permutedims( I(2) ⊗ -X ⊗ I(2^(num_of_sites-2))  ,[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites))  == MPO ? println("Twist: X") :
-        reshape(permutedims(Z ⊗ I(2^(num_of_sites-1)),[1,3,2,4]),2^(num_of_sites),2^(num_of_sites))*translated_MPO*reshape(permutedims( I(2) ⊗ -X ⊗ I(2^(num_of_sites-2)),[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites)) == MPO ? println("Twist: ZX") : println()
+        translated_MPO*reshape(permutedims( I(2) ⊗ X ⊗ I(2^(num_of_sites-2))  ,[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites))  == MPO ? println("Twist: X") :
+        reshape(permutedims(Z ⊗ I(2^(num_of_sites-1)),[1,3,2,4]),2^(num_of_sites),2^(num_of_sites))*translated_MPO*reshape(permutedims( I(2) ⊗ X ⊗ I(2^(num_of_sites-2)),[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites)) == MPO ? println("Twist: ZX") : println()
     end
 
-    num_of_sites = 4
+    num_of_sites = 2
     for X_defect in (false, true)
         for Z_defect in (false, true)
             MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,0)
