@@ -42,7 +42,7 @@
         end
         JW_matrix = reshape(JW_matrix, (Int(sqrt(length(JW_matrix))),Int(sqrt(length(JW_matrix)))))
 
-        return SparseArray{Int8}(JW_matrix)
+        return JW_matrix
     end
     vertex_tensor(i,j,k, num_of_fermions) = get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)+ 
                                             get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)+ 
@@ -82,25 +82,24 @@
 
 
     function get_1D_MPO(num_of_sites,X_defect,Z_defect,shift)
-        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites)
+        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites) # 2.5
         # println(2*num_of_sites+((shift)% num_of_sites+1))
-        for i in 2:num_of_sites
+        for i in 2:num_of_sites # 7.5
             # println(2*num_of_sites+((i-1+shift) % num_of_sites+1))
             MPO *= vertex_tensor(2*i,2*(i-1)+1,2*num_of_sites+((i-1+shift) % num_of_sites+1),3*num_of_sites)
         end
         
-        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d]
+        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d] # 0.85
 
         MPO = reshape(MPO, 2^1,2^(3*num_of_sites), 2^(3*num_of_sites))
 
-        for i in 2:num_of_sites
+        for i in 2:num_of_sites # 2.5
             @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2*(i-1), 2*(i-1)+1, 3*num_of_sites)[c,e,d]
             MPO = reshape(MPO, 2^i,2^(3*num_of_sites), 2^(3*num_of_sites))
         end
+        MPO = reshape(reshape(MPO, 2^(4*num_of_sites), 2^(3*num_of_sites))*X_tensor(1,3*num_of_sites,X_defect)*Z_tensor(1,3*num_of_sites,Z_defect),2^num_of_sites,2^(3*num_of_sites),2^(3*num_of_sites))
 
-        @tensor MPO[a,b,d] := MPO[a,b,e]*X_tensor(1,3*num_of_sites,X_defect)[f,d]*Z_tensor(1,3*num_of_sites,Z_defect)[e,f]
-
-        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites,num_of_sites)
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites,num_of_sites) # 6.5
 
         if shift != 0
             # Translate spins
@@ -137,7 +136,7 @@
         reshape(permutedims(Z ⊗ I(2^(num_of_sites-1)),[1,3,2,4]),2^(num_of_sites),2^(num_of_sites))*translated_MPO*reshape(permutedims( I(2) ⊗ X ⊗ I(2^(num_of_sites-2)),[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites)) == MPO ? println("Twist: ZX") : println()
     end
 
-    num_of_sites = 2
+    num_of_sites = 5
     for X_defect in (false, true)
         for Z_defect in (false, true)
             MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,0)
@@ -152,3 +151,5 @@
             println()
         end
     end
+
+    # @time get_JW_matrix(1, 15, false, false)    
