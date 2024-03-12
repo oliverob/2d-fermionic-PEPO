@@ -1,9 +1,9 @@
-    using SparseArrayKit, LinearAlgebra, TensorOperations, SparseArrays, TensorCore
+    using SparseArrayKit, LinearAlgebra, TensorOperations, SparseArrays, TensorCore, Profile, JET
 
-    Z = SparseArray{Int8}([1 0; 0 -1])
-    X = SparseArray{Int8}([0 1; 1 0])
-    creation_operator = SparseArray{Int8}([0 0; 1 0])
-    annihilation_operator = SparseArray{Int8}([0 1; 0 0])
+    const Z = SparseArray{Int8}([1 0; 0 -1])
+    const X = SparseArray{Int8}([0 1; 1 0])
+    const creation_operator = SparseArray{Int8}([0 0; 1 0])
+    const annihilation_operator = SparseArray{Int8}([0 1; 0 0])
 
 
     function get_JW_matrix(i, num_of_fermions, filled, creation)
@@ -17,13 +17,13 @@
         JW_matrix = SparseArray{Int8}(JW_matrix)
         if !filled
             vaccum = SparseArray{Int8}([1 0; 0 0])
-            @tensor JW_matrix[a,b,c,d,e,f] := SparseArray{Int8}(I(2^(i-1)))[a,d]*vaccum[b,e]*SparseArray{Int8}(I(2^(num_of_fermions-i)))[c,f]
+            @tensor JW_matrix[a,b,c,d,e,f] := SparseArray{Int8}(sparse(I(2^(i-1))))[a,d]*vaccum[b,e]*SparseArray{Int8}(sparse(I(2^(num_of_fermions-i))))[c,f]
         else
             if i == 1
                 if creation
-                    @tensor JW_matrix[b,c,e,f] := creation_operator[b,e]*SparseArray{Int8}(I(2^(num_of_fermions-i)))[c,f]
+                    @tensor JW_matrix[b,c,e,f] := creation_operator[b,e]*SparseArray{Int8}(sparse(I(2^(num_of_fermions-i))))[c,f]
                 else
-                    @tensor JW_matrix[b,c,e,f] := annihilation_operator[b,e]*SparseArray{Int8}(I(2^(num_of_fermions-i)))[c,f]
+                    @tensor JW_matrix[b,c,e,f] := annihilation_operator[b,e]*SparseArray{Int8}(sparse(I(2^(num_of_fermions-i))))[c,f]
                 end
             else
                 Zs = Z
@@ -33,9 +33,9 @@
                 end
                 
                 if creation
-                    @tensor JW_matrix[a,b,c,d,e,f] := Zs[a,d]*creation_operator[b,e]*SparseArray{Int8}(I(2^(num_of_fermions-i)))[c,f]
+                    @tensor JW_matrix[a,b,c,d,e,f] := Zs[a,d]*creation_operator[b,e]*SparseArray{Int8}(sparse(I(2^(num_of_fermions-i))))[c,f]
                 else
-                    @tensor JW_matrix[a,b,c,d,e,f] := Zs[a,d]*annihilation_operator[b,e]*SparseArray{Int8}(I(2^(num_of_fermions-i)))[c,f]
+                    @tensor JW_matrix[a,b,c,d,e,f] := Zs[a,d]*annihilation_operator[b,e]*SparseArray{Int8}(sparse(I(2^(num_of_fermions-i))))[c,f]
                 end
             end
 
@@ -57,8 +57,8 @@
         return GHZ_tensor
     end
 
-    X_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,true,false) + get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,false,false) : SparseArray{Int8}(I(2^(num_of_fermions)))
-    Z_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,false,false) - get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,true,false) : SparseArray{Int8}(I(2^(num_of_fermions)))
+    X_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,true,false) + get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,false,false) : SparseArray{Int8}(sparse(I(2^(num_of_fermions))))
+    Z_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,false,false) - get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,true,false) : SparseArray{Int8}(sparse(I(2^(num_of_fermions))))
 
 
     function trace_out_fermion(tensor,is,  num_of_fermions)
@@ -74,40 +74,40 @@
     end
 
     function multiply_by_vacuum(MPO, num_of_fermions, num_of_physical_fermions, num_of_spins)
-        partial_vaccum = SparseArray(reshape([j==((k-1)*2^(num_of_fermions-num_of_physical_fermions))+1 ? 1 : 0 for j in 1:2^(num_of_fermions) for k in 1:2^num_of_physical_fermions],2^num_of_physical_fermions,2^num_of_fermions))
-        full_vacuum = SparseArray([j == 1 ? 1 : 0 for j in 1:2^num_of_fermions])
+        partial_vaccum = SparseArray(sparse(reshape([j==((k-1)*2^(num_of_fermions-num_of_physical_fermions))+1 ? 1 : 0 for j in 1:2^(num_of_fermions) for k in 1:2^num_of_physical_fermions],2^num_of_physical_fermions,2^num_of_fermions)))
+        full_vacuum = SparseArray(sparse([j == 1 ? 1 : 0 for j in 1:2^num_of_fermions]))
         @tensor MPO_without_virtual_fermions[b,a] := partial_vaccum[b,e]*MPO[a,e,f]*full_vacuum[f] # Finally correct!
         return MPO_without_virtual_fermions
     end
 
 
     function get_1D_MPO(num_of_sites,X_defect,Z_defect,shift)
-        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites) # 2.5
+        @time MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites) # 2.5
         # println(2*num_of_sites+((shift)% num_of_sites+1))
-        for i in 2:num_of_sites # 7.5
+        @time for i in 2:num_of_sites # 7.5
             # println(2*num_of_sites+((i-1+shift) % num_of_sites+1))
             MPO *= vertex_tensor(2*i,2*(i-1)+1,2*num_of_sites+((i-1+shift) % num_of_sites+1),3*num_of_sites)
         end
         
-        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d] # 0.85
+        @time @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d] # 0.85
 
         MPO = reshape(MPO, 2^1,2^(3*num_of_sites), 2^(3*num_of_sites))
 
-        for i in 2:num_of_sites # 2.5
+        @time for i in 2:num_of_sites # 2.5
             @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2*(i-1), 2*(i-1)+1, 3*num_of_sites)[c,e,d]
             MPO = reshape(MPO, 2^i,2^(3*num_of_sites), 2^(3*num_of_sites))
         end
-        MPO = reshape(reshape(MPO, 2^(4*num_of_sites), 2^(3*num_of_sites))*X_tensor(1,3*num_of_sites,X_defect)*Z_tensor(1,3*num_of_sites,Z_defect),2^num_of_sites,2^(3*num_of_sites),2^(3*num_of_sites))
+        @time MPO = reshape(reshape(MPO, 2^(4*num_of_sites), 2^(3*num_of_sites))*X_tensor(1,3*num_of_sites,X_defect)*Z_tensor(1,3*num_of_sites,Z_defect),2^num_of_sites,2^(3*num_of_sites),2^(3*num_of_sites))
 
-        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites,num_of_sites) # 6.5
+        @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites,num_of_sites) # 6.5
 
         if shift != 0
             # Translate spins
             spins_tensor_product_dims = (2 for j in 1:num_of_sites) |> Tuple
             # println([j== 1 ? 1 : ((j+num_of_sites-shift-2) % num_of_sites)+2 for j in 1:num_of_sites+1] )
             traced_MPO = reshape(permutedims(reshape(traced_MPO, (2^(num_of_sites),spins_tensor_product_dims...)),
-            [j== 1 ? 1 : ((j+num_of_sites-shift-2) % num_of_sites)+2 for j in 1:num_of_sites+1])
-            ,2^(num_of_sites), 2^(num_of_sites))
+            [j== 1 ? 1 : ((j+num_of_sites-shift-2) % num_of_sites)+2 for j in 1:num_of_sites+1]),
+            2^(num_of_sites), 2^(num_of_sites))
         end
         return traced_MPO
     end
@@ -136,20 +136,23 @@
         reshape(permutedims(Z ⊗ I(2^(num_of_sites-1)),[1,3,2,4]),2^(num_of_sites),2^(num_of_sites))*translated_MPO*reshape(permutedims( I(2) ⊗ X ⊗ I(2^(num_of_sites-2)),[1,3,5,2,4,6]),2^(num_of_sites),2^(num_of_sites)) == MPO ? println("Twist: ZX") : println()
     end
 
-    num_of_sites = 5
-    for X_defect in (false, true)
-        for Z_defect in (false, true)
-            MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,0)
-
-            println("Defect: ", X_defect & Z_defect ? "Y" : X_defect ? "X" : Z_defect ? "Z" : "I")
-            charge_sectors(MPO, num_of_sites)
-
-            translated_MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,1)
-
-            twists(MPO, translated_MPO, num_of_sites)
-            
-            println()
+    function get_table(num_of_sites)
+        for X_defect in (false, true)
+            for Z_defect in (false, true)
+                MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,0)
+    
+                println("Defect: ", X_defect & Z_defect ? "Y" : X_defect ? "X" : Z_defect ? "Z" : "I")
+                charge_sectors(MPO, num_of_sites)
+    
+                translated_MPO = get_1D_MPO(num_of_sites, X_defect, Z_defect,1)
+    
+                twists(MPO, translated_MPO, num_of_sites)
+                
+                println()
+            end
         end
     end
-
-    # @time get_JW_matrix(1, 15, false, false)    
+    @time get_table(7)
+    # @time get_JW_matrix(1, 20, true, false)    
+#  @time Matrix(get_1D_MPO(1, true, true,0))
+|
