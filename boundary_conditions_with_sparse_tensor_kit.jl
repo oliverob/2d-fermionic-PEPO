@@ -142,10 +142,14 @@
         return traced_MPO
     end
 
-    function get_2D_PEPO(Z_defect_V,Z_defect_H)
-        MPO = vertex_tensor_5(1,2,3,4,17,20)*vertex_tensor_5(5,6,7,8,18,20)*vertex_tensor_5(9,10,11,12,19,20)*vertex_tensor_5(13,14,15,16,20,20)
+    function get_2D_PEPO(X_defect,Z_defect_V,Z_defect_H, horizontal_shift, vertical_shift)
 
-        @time @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 7, 20)[c,b,d]
+        MPO = vertex_tensor_5(1,2,3,4,horizontal_shift & vertical_shift ? 20 : vertical_shift ? 19 : horizontal_shift ? 18 : 17,20)*
+        vertex_tensor_5(5,6,7,8,horizontal_shift & vertical_shift ? 19 : vertical_shift ? 20 : horizontal_shift ? 17 : 18,20)*
+        vertex_tensor_5(9,10,11,12,horizontal_shift & vertical_shift ? 18 : vertical_shift ? 17 : horizontal_shift ? 20 : 19,20)*
+        vertex_tensor_5(13,14,15,16,horizontal_shift & vertical_shift ? 17 : vertical_shift ? 18 : horizontal_shift ? 19 : 20,20)
+        
+        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 7, 20)[c,b,d]
         MPO = reshape(MPO, 2^1,2^(20), 2^(20))
         @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(5, 3, 20)[c,e,d]
         MPO = reshape(MPO, 2^2,2^(20), 2^(20))
@@ -162,11 +166,18 @@
         @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 6, 20)[c,e,d]
         MPO = reshape(MPO, 2^8,2^(20), 2^(20))
         MPO = reshape(MPO, 2^(28), 2^(20))
-        MPO = MPO*Z_tensor(5,20,Z_defect_V)*Z_tensor(13,20,Z_defect_V)*Z_tensor(12,20,Z_defect_H)*Z_tensor(16,20,Z_defect_H)
+        MPO = MPO*Z_tensor(5,20,Z_defect_V)*Z_tensor(13,20,Z_defect_V)*Z_tensor(12,20,Z_defect_H)*Z_tensor(16,20,Z_defect_H)*X_tensor(7,20,X_defect)
         MPO = reshape(MPO, 2^8,2^(20), 2^(20))
 
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:16],  20), 20, 4)
 
-        @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:16],  20), 20, 4)
+        if horizontal_shift
+            traced_MPO = reshape(permutedims(reshape(traced_MPO, 16,2,2,2,2,2,2,2,2),[1,3,2,5,4,8,9,6,7]), 16, 256)
+        end
+
+        if vertical_shift
+            traced_MPO = reshape(permutedims(reshape(traced_MPO, 16,2,2,2,2,2,2,2,2),[1,4,5,2,3,7,6,9,8]), 16, 256)
+        end
         return traced_MPO
     end
 
@@ -212,11 +223,33 @@
         end
     end
     # @time get_table(7)
-@time pepo = get_2D_PEPO(false,false)
+for Z_H in (false, true)
+    for Z_V in (false, true)
+        for X_defect in (false, true)
+            pepo = get_2D_PEPO(X_defect,Z_V,Z_H, false,false)
+            pepo_twisted_horizontal = get_2D_PEPO(X_defect, Z_V, Z_H, true,false)
+            pepo_twisted_vertical = get_2D_PEPO(X_defect, Z_V, Z_H, false,true)
 
-Matrix(pepo)
-reshape(permutedims(Z ⊗ Z ⊗ Z ⊗ Z,[1,3,5,7,2,4,6,8]),16,16)*Matrix(pepo)==Matrix(pepo)
-Matrix(pepo)*reshape(permutedims(X ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
-Matrix(pepo)*reshape(permutedims(I(2) ⊗ I(2) ⊗ X ⊗ X ⊗ Z ⊗ I(2) ⊗ Z ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
-Matrix(pepo)*reshape(permutedims(Z ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ X ⊗ X ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
-Matrix(pepo)*reshape(permutedims(I(2) ⊗ Z ⊗I(2) ⊗ Z ⊗ X ⊗ X ⊗ I(2) ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
+            # Matrix(pepo)
+            println("Defect: ", Z_H & Z_V & X_defect ? "Z_HZ_VX" : Z_H & Z_V ? "Z_HZ_V" : Z_H & X_defect ? "Z_HX" :  Z_V & X_defect ? "Z_VX" :  Z_H  ? "Z_H" :  Z_V ? "Z_V" :   X_defect ? "X" : "I")
+            reshape(permutedims(Z ⊗ Z ⊗ Z ⊗ Z,[1,3,5,7,2,4,6,8]),16,16)*pepo == pepo ? println("ZZZZ: +1") : println("ZZZZ: -1")
+            pepo*reshape(permutedims(X ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)
+            pepo*reshape(permutedims(X ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo
+            pepo*reshape(permutedims(X ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("XXIIIZIZ: +1") : println("XXIIIZIZ: -1")
+            pepo*reshape(permutedims(I(2) ⊗ I(2) ⊗ X ⊗ X ⊗ Z ⊗ I(2) ⊗ Z ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("IIXXZIZI: +1") : println("IIXXZIZI: -1")
+            pepo*reshape(permutedims(Z ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ X ⊗ X ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("ZIZIIIXX: +1") : println("ZIZIIIXX: -1")
+            pepo*reshape(permutedims(I(2) ⊗ Z ⊗I(2) ⊗ Z ⊗ X ⊗ X ⊗ I(2) ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("IZIZXXII: +1") : println("IZIZXXII: -1")
+            pepo_twisted_horizontal == pepo ? println("Horizontal Twist: I") : print("")
+            reshape(permutedims(Z ⊗ I(2) ⊗ Z ⊗ I(2),[1,3,5,7,2,4,6,8]),16,16)*pepo_twisted_horizontal == pepo ? println("Horizontal Twist: Z_V") : print("")
+            pepo_twisted_horizontal*reshape(permutedims(I(2) ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("Horizontal Twist: IXIIIIIZ") : print("")
+            reshape(permutedims(Z ⊗ I(2) ⊗ Z ⊗ I(2),[1,3,5,7,2,4,6,8]),16,16)*pepo_twisted_horizontal*reshape(permutedims(I(2) ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("Horizontal Twist: Z_VIXIIIIIZ") : print("")
+
+            pepo_twisted_vertical == pepo ? println("Vertical Twist: I") : print("")
+            reshape(permutedims(Z ⊗ Z ⊗ I(2) ⊗ I(2),[1,3,5,7,2,4,6,8]),16,16)*pepo_twisted_vertical == pepo ? println("Vertical Twist: Z_H") : print("")
+            pepo_twisted_vertical*reshape(permutedims(X ⊗ Z ⊗ X ⊗ I(2) ⊗ X ⊗ Z ⊗ I(2) ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256) == pepo ? println("Vertical Twist: XZXIXZII") : print("")
+
+
+        end
+    end
+end
+
