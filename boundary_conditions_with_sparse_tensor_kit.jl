@@ -138,11 +138,11 @@
             traced_MPO = reshape(permutedims(reshape(traced_MPO, (2^(num_of_sites),spins_tensor_product_dims...)),
             [j== 1 ? 1 : ((j+num_of_sites-shift-2) % num_of_sites)+2 for j in 1:num_of_sites+1]),
             2^(num_of_sites), 2^(num_of_sites))
-        end
+        end 
         return traced_MPO
     end
 
-    function get_2D_PEPO()
+    function get_2D_PEPO(Z_defect_V,Z_defect_H)
         MPO = vertex_tensor_5(1,2,3,4,17,20)*vertex_tensor_5(5,6,7,8,18,20)*vertex_tensor_5(9,10,11,12,19,20)*vertex_tensor_5(13,14,15,16,20,20)
 
         @time @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 7, 20)[c,b,d]
@@ -159,8 +159,12 @@
         MPO = reshape(MPO, 2^6,2^(20), 2^(20))
         @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(8, 14, 20)[c,e,d]
         MPO = reshape(MPO, 2^7,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 2, 20)[c,e,d]
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 6, 20)[c,e,d]
         MPO = reshape(MPO, 2^8,2^(20), 2^(20))
+        MPO = reshape(MPO, 2^(28), 2^(20))
+        MPO = MPO*Z_tensor(5,20,Z_defect_V)*Z_tensor(13,20,Z_defect_V)*Z_tensor(12,20,Z_defect_H)*Z_tensor(16,20,Z_defect_H)
+        MPO = reshape(MPO, 2^8,2^(20), 2^(20))
+
 
         @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:16],  20), 20, 4)
         return traced_MPO
@@ -208,6 +212,11 @@
         end
     end
     # @time get_table(7)
-@time pepo = get_2D_PEPO()
+@time pepo = get_2D_PEPO(false,false)
 
 Matrix(pepo)
+reshape(permutedims(Z ⊗ Z ⊗ Z ⊗ Z,[1,3,5,7,2,4,6,8]),16,16)*Matrix(pepo)==Matrix(pepo)
+Matrix(pepo)*reshape(permutedims(X ⊗ X ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ Z ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
+Matrix(pepo)*reshape(permutedims(I(2) ⊗ I(2) ⊗ X ⊗ X ⊗ Z ⊗ I(2) ⊗ Z ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
+Matrix(pepo)*reshape(permutedims(Z ⊗ I(2) ⊗ Z ⊗ I(2) ⊗ I(2) ⊗ I(2) ⊗ X ⊗ X ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
+Matrix(pepo)*reshape(permutedims(I(2) ⊗ Z ⊗I(2) ⊗ Z ⊗ X ⊗ X ⊗ I(2) ⊗ I(2) ,[1,3,5,7,9,11,13,15,2,4,6,8,10,12,14,16]),256,256)==-Matrix(pepo)
