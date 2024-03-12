@@ -48,6 +48,36 @@
                                             get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)+ 
                                             get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)+ 
                                             get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true);
+    function vertex_tensor_5(i, j,k,l, m, num_of_fermions)
+        vertex = get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,false,true)
+
+        for b in 1:2^5-1
+            if count_ones(b) % 2 == 0
+                binary =Bool.(digits(b, base=2, pad=5))
+                vertex += get_JW_matrix(i, num_of_fermions,binary[1],true)*get_JW_matrix(j, num_of_fermions,binary[2],true)*get_JW_matrix(k, num_of_fermions,binary[3],true)*get_JW_matrix(l, num_of_fermions,binary[4],true)*get_JW_matrix(m, num_of_fermions,binary[5],true)
+            end
+        end
+        return vertex
+    end
+    # vertex_tensor_5(i, j,k,l, m, num_of_fermions) = get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,false,true) + 
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,false,true) + 
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,false,true) + 
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,false,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,false,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,false,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,false,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,false,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,false,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,false,true)*get_JW_matrix(m, num_of_fermions,true,true) +
+    #                                         get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(j, num_of_fermions,true,true)*get_JW_matrix(k, num_of_fermions,true,true)*get_JW_matrix(l, num_of_fermions,true,true)*get_JW_matrix(m, num_of_fermions,false,true);
+    # Should be possible to simplify vertex tensor to just a single binary column with a 1 everywhere it should map e.g. for 3 vertex 000:1, 110: 1, 101: 1, 011:1 therefore column will be 10010110   
+    # vertex_tensor_5(i,j,k,l,m, num_of_fermions) = [count(c -> c == '1', bitstring(i)[i,j,k,l,m]) % 2 == 0 for i in 1:2^num_of_fermions]
+
 
     function GHZ_tensor(j,k, num_of_fermions)
         spin_1 = SparseArray{Int8}([1; 0])
@@ -73,7 +103,7 @@
         return current_tensor
     end
 
-    function multiply_by_vacuum(MPO, num_of_fermions, num_of_physical_fermions, num_of_spins)
+    function multiply_by_vacuum(MPO, num_of_fermions, num_of_physical_fermions)
         partial_vaccum = SparseArray(sparse(reshape([j==((k-1)*2^(num_of_fermions-num_of_physical_fermions))+1 ? 1 : 0 for j in 1:2^(num_of_fermions) for k in 1:2^num_of_physical_fermions],2^num_of_physical_fermions,2^num_of_fermions)))
         full_vacuum = SparseArray(sparse([j == 1 ? 1 : 0 for j in 1:2^num_of_fermions]))
         @tensor MPO_without_virtual_fermions[b,a] := partial_vaccum[b,e]*MPO[a,e,f]*full_vacuum[f] # Finally correct!
@@ -99,7 +129,7 @@
         end
         @time MPO = reshape(reshape(MPO, 2^(4*num_of_sites), 2^(3*num_of_sites))*X_tensor(1,3*num_of_sites,X_defect)*Z_tensor(1,3*num_of_sites,Z_defect),2^num_of_sites,2^(3*num_of_sites),2^(3*num_of_sites))
 
-        @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites,num_of_sites) # 6.5
+        @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites) # 6.5
 
         if shift != 0
             # Translate spins
@@ -111,6 +141,31 @@
         end
         return traced_MPO
     end
+
+    function get_2D_PEPO()
+        MPO = vertex_tensor_5(1,2,3,4,17,20)*vertex_tensor_5(5,6,7,8,18,20)*vertex_tensor_5(9,10,11,12,19,20)*vertex_tensor_5(13,14,15,16,20,20)
+
+        @time @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 7, 20)[c,b,d]
+        MPO = reshape(MPO, 2^1,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(5, 3, 20)[c,e,d]
+        MPO = reshape(MPO, 2^2,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(9, 15, 20)[c,e,d]
+        MPO = reshape(MPO, 2^3,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(13, 11, 20)[c,e,d]
+        MPO = reshape(MPO, 2^4,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(4, 10, 20)[c,e,d]
+        MPO = reshape(MPO, 2^5,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(12, 2, 20)[c,e,d]
+        MPO = reshape(MPO, 2^6,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(8, 14, 20)[c,e,d]
+        MPO = reshape(MPO, 2^7,2^(20), 2^(20))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 2, 20)[c,e,d]
+        MPO = reshape(MPO, 2^8,2^(20), 2^(20))
+
+        @time traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:16],  20), 20, 4)
+        return traced_MPO
+    end
+
 
     function charge_sectors(MPO, num_of_sites)
         # ZZ Symmetry
@@ -152,7 +207,7 @@
             end
         end
     end
-    @time get_table(7)
-    # @time get_JW_matrix(1, 20, true, false)    
-#  @time Matrix(get_1D_MPO(1, true, true,0))
-|
+    # @time get_table(7)
+@time pepo = get_2D_PEPO()
+
+Matrix(pepo)
