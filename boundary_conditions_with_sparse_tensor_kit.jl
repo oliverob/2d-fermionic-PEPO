@@ -110,26 +110,6 @@
         return MPO_without_virtual_fermions
     end
     
-    function get_1D_KW(num_of_sites,X_defect, Z_defect)
-        CNOT = [1; 0]⊗[1; 0]⊗[1;  0]+ [0 ; 1]⊗[0 ; 1]⊗[1;  0] + [0; 1]⊗[1 ; 0]⊗[0 ; 1] + [1;  0]⊗[0; 1]⊗[0 ; 1]
-        GHZ = [1; 0]⊗[1; 0]⊗[1;  0]+[0; 1]⊗[0; 1]⊗[0;  1]
-        @tensor MPO[a,b,c,e] := CNOT[a,b,d]*GHZ[d,c,e]
-        for i in 2:num_of_sites # 2.5
-            @tensor MPO[a,b,f,c,i,e] := MPO[a,b,c,g]*CNOT[g,f,h]*GHZ[h, i, e]
-            MPO = reshape(MPO, 2, 2^i, 2^i, 2)
-        end
-        if X_defect
-            @tensor MPO[a,b,c,e] := MPO[a,b,c,f]*[0 1; 1 0][f,e]
-        end
-        if Z_defect
-            @tensor MPO[a,b,c,e] := MPO[a,b,c,f]*[1 0; 0 -1][f,e]
-        end
-
-        @tensor MPO[b,c] := MPO[a,b,c,a]
-        reshape(MPO,2^num_of_sites, 2^num_of_sites)
-    end
-
-    get_1D_KW(4,false, false)
 
     function get_1D_MPO(num_of_sites,X_defect,Z_defect,shift)
         MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites) # 2.5
@@ -341,12 +321,45 @@ end
 reshape(reshape(Matrix(get_1D_torus(false,false)),2^3,2,2,2,2,2,2)[:,:,:,:,1,1,1],8,8) == Matrix(get_1D_MPO(3,false,false,0)) ? println("1D torus with |0> on extra spins matches 1D cycle") : println("Error")
 
 
-num_of_sites = 2
 get_1D_KW(num_of_sites,true, false)
 # Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false,false)+get_1D_KW(num_of_sites,false, true))'
 # Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,true,false)+get_1D_KW(num_of_sites,true, true))'
 
-Matrix(get_1D_MPO(num_of_sites,false,false,0))*get_1D_KW(num_of_sites,false, true)'
-Matrix(get_1D_MPO(num_of_sites,false,true,0))*get_1D_KW(num_of_sites,false, false)'
-Matrix(get_1D_MPO(num_of_sites,true,false,0))*get_1D_KW(num_of_sites,true, false)'
-Matrix(get_1D_MPO(num_of_sites,true,true,0))*get_1D_KW(num_of_sites,true, true)'
+# Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false))'
+# Matrix(get_1D_MPO(num_of_sites,false,true,0))*(get_1D_KW(num_of_sites,false, false))'
+# Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,false, false))'
+# Matrix(get_1D_MPO(num_of_sites,true,true,0))*(get_1D_KW(num_of_sites,false, false))'
+
+
+function get_1D_KW(num_of_sites,X_defect, Z_defect)
+    CNOT = [1; 0]⊗[1; 0]⊗[1;  0]+ [0 ; 1]⊗[0 ; 1]⊗[1;  0] + [0; 1]⊗[1 ; 0]⊗[0 ; 1] + [1;  0]⊗[0; 1]⊗[0 ; 1]
+    GHZ = [1; 0]⊗[1; 0]⊗[1;  0]+[0; 1]⊗[0; 1]⊗[0;  1]
+    @tensor MPO[a,b,c,e] := CNOT[a,c,d]*GHZ[d,b,e]
+    
+
+    for i in 2:num_of_sites # 2.5
+        @tensor MPO[a,b,f,c,i,e] := MPO[a,b,c,h]*CNOT[h,i,g]*GHZ[g, f, e]
+        MPO = reshape(MPO, 2, 2^i, 2^i, 2)
+    end
+    if X_defect
+        @tensor MPO[a,b,c,e] := MPO[a,b,c,f]*[0 1; 1 0][f,e]
+    end
+    if Z_defect
+        @tensor MPO[a,b,c,e] := MPO[a,b,c,f]*[1 0; 0 -1][f,e]
+    end
+
+
+    @tensor MPO[b,c] := MPO[a,b,c,a]
+    MPO = permutedims(reshape(MPO, 2^(num_of_sites-1), 2, 2^num_of_sites),[2,1,3])
+
+    reshape(MPO,2^num_of_sites, 2^num_of_sites)
+end
+num_of_sites = 4
+
+Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,false,true,0))*(get_1D_KW(num_of_sites,false, false)))/2) # (I + Z)/2
+Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)))/2) # (I + X)/2
+
+
+Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,false,true,0))*(get_1D_KW(num_of_sites,false, false)) + 
+Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)) )/2)# (I + Z)/2 + (I + X)/2
+# Equivalent to |0)(0| + |1)(0| boundary condition
