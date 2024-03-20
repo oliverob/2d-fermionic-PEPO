@@ -87,7 +87,7 @@
         return GHZ_tensor
     end
 
-    X_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,true,false) + get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,false,false) : SparseArray{Int8}(sparse(I(2^(num_of_fermions))))
+    X_tensor(i,j,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,false)*get_JW_matrix(j, num_of_fermions,true,true) + get_JW_matrix(i, num_of_fermions,true,false)*get_JW_matrix(j, num_of_fermions,false,true) : get_JW_matrix(i, num_of_fermions,false,false)*get_JW_matrix(j, num_of_fermions,false,true) + get_JW_matrix(i, num_of_fermions,true,false)*get_JW_matrix(j, num_of_fermions,true,true)
     Z_tensor(i,num_of_fermions, on) = on ? get_JW_matrix(i, num_of_fermions,false,true)*get_JW_matrix(i, num_of_fermions,false,false) - get_JW_matrix(i, num_of_fermions,true,true)*get_JW_matrix(i, num_of_fermions,true,false) : SparseArray{Int8}(sparse(I(2^(num_of_fermions))))
 
 
@@ -112,24 +112,24 @@
     
 
     function get_1D_MPO(num_of_sites,X_defect,Z_defect,shift)
-        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1),3*num_of_sites) # 2.5
+        MPO = vertex_tensor(2,1,2*num_of_sites+((shift)% num_of_sites+1)+1,3*num_of_sites+1) # 2.5
         # println(2*num_of_sites+((shift)% num_of_sites+1))
         for i in 2:num_of_sites # 7.5
             # println(2*num_of_sites+((i-1+shift) % num_of_sites+1))
-            MPO *= vertex_tensor(2*i,2*(i-1)+1,2*num_of_sites+((i-1+shift) % num_of_sites+1),3*num_of_sites)
+            MPO *= vertex_tensor(2*i,2*(i-1)+1,2*num_of_sites+((i-1+shift) % num_of_sites+1)+1,3*num_of_sites+1)
         end
-        
-        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 1, 3*num_of_sites)[c,b,d] # 0.85
+        MPO *= X_tensor(1,2*num_of_sites+1,3*num_of_sites+1,X_defect)
+        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(2*num_of_sites, 2*num_of_sites+1, 3*num_of_sites+1)[c,b,d] # 0.85
 
-        MPO = reshape(MPO, 2^1,2^(3*num_of_sites), 2^(3*num_of_sites))
+        MPO = reshape(MPO, 2^1,2^(3*num_of_sites+1), 2^(3*num_of_sites+1))
 
         for i in 2:num_of_sites # 2.5
-            @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2*(i-1), 2*(i-1)+1, 3*num_of_sites)[c,e,d]
-            MPO = reshape(MPO, 2^i,2^(3*num_of_sites), 2^(3*num_of_sites))
+            @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2*(i-1), 2*(i-1)+1, 3*num_of_sites+1)[c,e,d]
+            MPO = reshape(MPO, 2^i,2^(3*num_of_sites+1), 2^(3*num_of_sites+1))
         end
-        MPO = reshape(reshape(MPO, 2^(4*num_of_sites), 2^(3*num_of_sites))*X_tensor(1,3*num_of_sites,X_defect)*Z_tensor(1,3*num_of_sites,Z_defect),2^num_of_sites,2^(3*num_of_sites),2^(3*num_of_sites))
+        MPO = reshape(reshape(MPO, 2^(4*num_of_sites+1), 2^(3*num_of_sites+1))*Z_tensor(1,3*num_of_sites+1,Z_defect),2^num_of_sites,2^(3*num_of_sites+1),2^(3*num_of_sites+1))
 
-        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites],  3*num_of_sites), 3*num_of_sites, num_of_sites) # 6.5
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:2*num_of_sites+1],  3*num_of_sites+1), 3*num_of_sites+1, num_of_sites) # 6.5
 
         if shift != 0
             # Translate spins
@@ -144,32 +144,33 @@
 
     function get_2D_PEPO(X_defect,Z_defect_V,Z_defect_H, horizontal_shift, vertical_shift)
 
-        MPO = vertex_tensor_5(1,2,3,4,horizontal_shift & vertical_shift ? 20 : vertical_shift ? 19 : horizontal_shift ? 18 : 17,20)*
-        vertex_tensor_5(5,6,7,8,horizontal_shift & vertical_shift ? 19 : vertical_shift ? 20 : horizontal_shift ? 17 : 18,20)*
-        vertex_tensor_5(9,10,11,12,horizontal_shift & vertical_shift ? 18 : vertical_shift ? 17 : horizontal_shift ? 20 : 19,20)*
-        vertex_tensor_5(13,14,15,16,horizontal_shift & vertical_shift ? 17 : vertical_shift ? 18 : horizontal_shift ? 19 : 20,20)
-        
-        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 7, 20)[c,b,d]
-        MPO = reshape(MPO, 2^1,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(5, 3, 20)[c,e,d]
-        MPO = reshape(MPO, 2^2,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(9, 15, 20)[c,e,d]
-        MPO = reshape(MPO, 2^3,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(13, 11, 20)[c,e,d]
-        MPO = reshape(MPO, 2^4,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(4, 10, 20)[c,e,d]
-        MPO = reshape(MPO, 2^5,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(12, 2, 20)[c,e,d]
-        MPO = reshape(MPO, 2^6,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(8, 14, 20)[c,e,d]
-        MPO = reshape(MPO, 2^7,2^(20), 2^(20))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 6, 20)[c,e,d]
-        MPO = reshape(MPO, 2^8,2^(20), 2^(20))
-        MPO = reshape(MPO, 2^(28), 2^(20))
-        MPO = MPO*Z_tensor(5,20,Z_defect_V)*Z_tensor(13,20,Z_defect_V)*Z_tensor(12,20,Z_defect_H)*Z_tensor(16,20,Z_defect_H)*X_tensor(7,20,X_defect)
-        MPO = reshape(MPO, 2^8,2^(20), 2^(20))
+        MPO = vertex_tensor_5(1,2,3,4,horizontal_shift & vertical_shift ? 21 : vertical_shift ? 20 : horizontal_shift ? 19 : 18,21)*
+        vertex_tensor_5(5,6,7,8,horizontal_shift & vertical_shift ? 20 : vertical_shift ? 21 : horizontal_shift ? 18 : 19,21)*
+        vertex_tensor_5(9,10,11,12,horizontal_shift & vertical_shift ? 19 : vertical_shift ? 18 : horizontal_shift ? 21 : 20,21)*
+        vertex_tensor_5(13,14,15,16,horizontal_shift & vertical_shift ? 18 : vertical_shift ? 19 : horizontal_shift ? 20 : 21,21)
+        MPO = MPO*X_tensor(7,17,21,X_defect)
 
-        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:16],  20), 20, 4)
+        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(1, 17, 21)[c,b,d]
+        MPO = reshape(MPO, 2^1,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(5, 3, 21)[c,e,d]
+        MPO = reshape(MPO, 2^2,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(9, 15, 21)[c,e,d]
+        MPO = reshape(MPO, 2^3,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(13, 11, 21)[c,e,d]
+        MPO = reshape(MPO, 2^4,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(4, 10, 21)[c,e,d]
+        MPO = reshape(MPO, 2^5,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(12, 2, 21)[c,e,d]
+        MPO = reshape(MPO, 2^6,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(8, 14, 21)[c,e,d]
+        MPO = reshape(MPO, 2^7,2^(21), 2^(21))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(16, 6, 21)[c,e,d]
+        MPO = reshape(MPO, 2^8,2^(21), 2^(21))
+        MPO = reshape(MPO, 2^(29), 2^(21))
+        MPO = MPO*Z_tensor(5,21,Z_defect_V)*Z_tensor(13,21,Z_defect_V)*Z_tensor(12,21,Z_defect_H)*Z_tensor(16,21,Z_defect_H)
+        MPO = reshape(MPO, 2^8,2^(21), 2^(21))
+
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:17],  21), 21, 4)
 
         if horizontal_shift
             traced_MPO = reshape(permutedims(reshape(traced_MPO, 16,2,2,2,2,2,2,2,2),[1,3,2,5,4,8,9,6,7]), 16, 256)
@@ -184,26 +185,26 @@
 
     function get_1D_torus(X_defect,Z_defect)
 
-        MPO = vertex_tensor_5(2,7,1,8,13 ,15)*vertex_tensor_5(4,9,3,10,14 ,15)*vertex_tensor_5(6,11,5,12,15,15)        
+        MPO = vertex_tensor_5(2,7,1,8,14 ,16)*vertex_tensor_5(4,9,3,10,15 ,16)*vertex_tensor_5(6,11,5,12,16,16)        
         
-        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(6, 1, 15)[c,b,d]
-        MPO = reshape(MPO, 2^1,2^(15), 2^(15))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2, 3, 15)[c,e,d]
-        MPO = reshape(MPO, 2^2,2^(15), 2^(15))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(4, 5, 15)[c,e,d]
-        MPO = reshape(MPO, 2^3,2^(15), 2^(15))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(7, 8, 15)[c,e,d]
-        MPO = reshape(MPO, 2^4,2^(15), 2^(15))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(9, 10, 15)[c,e,d]
-        MPO = reshape(MPO, 2^5,2^(15), 2^(15))
-        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(11, 12, 15)[c,e,d]
+        @tensor MPO[c,a,d] := MPO[a,b]*GHZ_tensor(6, 1, 16)[c,b,d]
+        MPO = reshape(MPO, 2^1,2^(16), 2^(16))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(2, 3, 16)[c,e,d]
+        MPO = reshape(MPO, 2^2,2^(16), 2^(16))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(4, 5, 16)[c,e,d]
+        MPO = reshape(MPO, 2^3,2^(16), 2^(16))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(7, 8, 16)[c,e,d]
+        MPO = reshape(MPO, 2^4,2^(16), 2^(16))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(9, 10, 16)[c,e,d]
+        MPO = reshape(MPO, 2^5,2^(16), 2^(16))
+        @tensor MPO[a,c,b,d] := MPO[a,b,e]*GHZ_tensor(11, 12, 16)[c,e,d]
 
-        MPO = reshape(MPO, 2^6,2^(15), 2^(15))
-        MPO = reshape(MPO, 2^(21), 2^(15))
-        MPO = MPO*Z_tensor(9,15,Z_defect)*X_tensor(9,15,X_defect)
-        MPO = reshape(MPO, 2^6,2^(15), 2^(15))
+        MPO = reshape(MPO, 2^6,2^(16), 2^(16))
+        MPO = reshape(MPO, 2^(22), 2^(16))
+        MPO = MPO*Z_tensor(9,16,Z_defect)*X_tensor(9,13,16,X_defect)
+        MPO = reshape(MPO, 2^6,2^(16), 2^(16))
 
-        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:12],  15), 15, 3)
+        traced_MPO = multiply_by_vacuum(trace_out_fermion(MPO,[j for j in 1:13],  16), 16, 3)
 
         return traced_MPO
     end
@@ -318,10 +319,15 @@ function check_unitary()
 end
 
 # Check 1D torus is the same as cycle
-reshape(reshape(Matrix(get_1D_torus(false,false)),2^3,2,2,2,2,2,2)[:,:,:,:,1,1,1],8,8) == Matrix(get_1D_MPO(3,false,false,0)) ? println("1D torus with |0> on extra spins matches 1D cycle") : println("Error")
+# @tensor oneD_cycle[a,b] := reshape(Matrix(get_1D_torus(false,false)),2^3,2^3,2,2,2)[a,b,e,f,g]*[0; 1][e]*[0; 1][f]*[0; 1][g]
+# @tensor oneD_cycle[a,b] := reshape(Matrix(get_1D_torus(false,false)),2^3,2^3,2,2,2)[a,b,e,f,g]*[1/2; 1/2][e]*[1/2; 1/2][f]*[1/2; 1/2][g]
+@tensor oneD_cycle[a,b] := reshape(Matrix(get_1D_torus(false,false)),2^3,2^3,2,2,2)[a,b,e,f,g]*[1; 0][e]*[1; 0][f]*[1; 0][g]
+# Matrix(get_1D_MPO(3,false,false,0))
+oneD_cycle == Matrix(get_1D_MPO(3,false,false,0)) ? println("1D torus with |0> on extra spins matches 1D cycle") : println("Error")
+# Without GHZ tensor and just directly connecting up the top and bottom legs makes each vector evaluate to zero if the third ket is a 1. It works if you reorder the vectors so the up and down legs are next to each other
 
 
-get_1D_KW(num_of_sites,true, false)
+# get_1D_KW(2,true, true)
 # Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false,false)+get_1D_KW(num_of_sites,false, true))'
 # Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,true,false)+get_1D_KW(num_of_sites,true, true))'
 
@@ -357,9 +363,15 @@ end
 num_of_sites = 4
 
 Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,false,true,0))*(get_1D_KW(num_of_sites,false, false)))/2) # (I + Z)/2
-Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)))/2) # (I + X)/2
-
+Int.((Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, true)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)))/2) # (X + Y)/2
+# Needs to change to X+Y
 
 Int.((Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,false,true,0))*(get_1D_KW(num_of_sites,false, false)) + 
-Matrix(get_1D_MPO(num_of_sites,false,false,0))*(get_1D_KW(num_of_sites,false, false)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)) )/2)# (I + Z)/2 + (I + X)/2
+Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, true)) + Matrix(get_1D_MPO(num_of_sites,true,false,0))*(get_1D_KW(num_of_sites,true, false)))/2)# (I + Z + X + Y)/2
 # Equivalent to |0)(0| + |1)(0| boundary condition
+
+get_1D_table(2)
+
+# Matrix(get_2D_PEPO(true,false,false, false,false))
+
+# get_2D_table()
