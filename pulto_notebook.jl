@@ -19,7 +19,177 @@ using Graphs, GraphPlot, Compose, PlutoUI, QuantumAlgebra, MetaGraphsNext
 
 
 # ╔═╡ 2cfc8f8e-f028-4f4f-ab80-70330e380d5a
-include("./arbitary_graph_operator_conversion.jl")
+begin
+	function convert_to_PEPO(G, defect=false)
+	    new_graph = MetaGraph(DiGraph(), label_type=Int, vertex_data_type=Tuple{Symbol, Int}, edge_data_type=Int)
+	    for vertex in vertices(G)
+	        new_graph[vertex] = (:v, 1)
+	    end
+	    current_edges = edges(G)
+	    for (i, edge) in enumerate(current_edges)
+	        u, v = src(edge), dst(edge)
+	        if i == 1 && defect
+	            new_graph[nv(new_graph)+1] = (:d,0)
+	            new_graph[u, nv(new_graph)] = new_graph[u][2]
+	        else
+	            new_graph[nv(new_graph)+1] = (:e,0)
+	            new_graph[u, nv(new_graph)] = new_graph[u][2]
+	        end
+	        new_graph[u] = (:v, new_graph[u][2]+1)
+	        new_graph[nv(new_graph), v] =  new_graph[v][2]
+	        new_graph[v] = (:v, new_graph[v][2]+1)
+	    end
+	    
+	    return new_graph
+	end
+	
+	function has_order_higher_than_path(PEPO,source,path, leg)
+	    path_edge = (source, path)
+	    if !has_edge(PEPO, path_edge...)
+	        path_edge = (path, source)
+	    end
+	    leg_edge = (source, leg)
+	    if !has_edge(PEPO,leg_edge...)
+	        leg_edge = (leg, source)
+	    end
+	    return PEPO[leg_edge...] > PEPO[path_edge...]
+	end
+	
+	function fermionic_XX(PEPO, start, target)
+	    shortest_path = a_star(Graph(PEPO), start, target)
+	    operators= fermionic_path(PEPO,shortest_path)
+	    return normal_form(operators)
+	end
+	
+	function fermionic_Z(PEPO, target)
+	    operator = σz()^2
+	    for ghz_tensor in all_neighbors(PEPO, target)
+	        operator *= σz(ghz_tensor)
+	    end
+	    return normal_form(operator)
+	end
+	
+	
+	function fermionic_X(PEPO,target)
+	    
+	    defect = filter((x)-> PEPO[x][1] == :d,collect(vertices(PEPO)))
+	    if length(defect) == 0
+	        throw("No defect")
+	    end
+	    shortest_path = a_star(Graph(PEPO), target, defect[1])
+	    operators= fermionic_path(PEPO,shortest_path)
+	    return normal_form(operators)
+	end
+	
+	function fermionic_path(PEPO, shortest_path)
+	
+	    operators = σz()^2
+	    for edge in shortest_path
+	        source = src(edge) 
+	        destination = dst(edge) 
+	        vertex_tensor = PEPO[source][1] == :v ? source : destination
+	        ghz_tensor = PEPO[source][1] == :v ? destination : source
+	        vertex_neighbours = all_neighbors(PEPO, vertex_tensor)
+	        z_edges_vertex = filter((x)-> has_order_higher_than_path(PEPO,vertex_tensor,ghz_tensor, x),vertex_neighbours)
+	        operators *= prod(map((x)-> σz(x),z_edges_vertex))
+	
+	        if PEPO[ghz_tensor][1] == :d && has_edge(PEPO, vertex_tensor, ghz_tensor)
+	            operators *= σz(ghz_tensor)
+	            break;
+	        end
+	        if destination == ghz_tensor
+	            operators *= has_edge(PEPO,vertex_tensor, ghz_tensor) ? 1 : -1
+	            operators *= σy(ghz_tensor)
+	        end
+	        if PEPO[ghz_tensor][1] == :d
+	            break;
+	        end
+	    end
+	    return operators
+	end
+	
+	
+	# Testing even fermionic algebra
+	function testing_even_algebra(PEPO, interaction_graph)
+	    total_pauli_weight = 0
+	    total_hopping_terms = 0
+	    for current_edge in edges(interaction_graph)
+	        i, j = src(current_edge), dst(current_edge)
+	        current_hopping_term = fermionic_XX(PEPO, i, j) 
+	        total_pauli_weight += length(collect(keys(current_hopping_term.terms))[1].bares.v)
+	        total_hopping_terms += 1
+	        for other_edge in edges(interaction_graph)
+	            k, l = src(other_edge), dst(other_edge)
+	            other_hopping_term = fermionic_XX(PEPO, k,l)
+	            if (i == k ⊻ j == l)
+	                if normal_form(comm(current_hopping_term, other_hopping_term)) == 0*one(σx())
+	                    throw("Error two touching terms commute")
+	                end
+	            elseif i == l && j == k && i != j
+	                if normal_form(current_hopping_term) != -normal_form(other_hopping_term)
+	                    throw("Error two opposite edges are not opposite signed $current_hopping_term, $other_hopping_term")
+	                end
+	            elseif i != k && j != l && i != l && j != k && i != j && l != k
+	                if normal_form(comm(current_hopping_term, other_hopping_term)) != 0*one(σx())
+	                    throw("Error two non-touching terms anticommute $i, $j, $k, $l")
+	                end
+	            end
+	            parity_term = fermionic_Z(PEPO, k)
+	            if (i == k ⊻ j == k)
+	                if normal_form(comm(current_hopping_term, parity_term)) == 0*one(σx())
+	                    throw("Error two touching terms commute")
+	                end
+	            elseif i != k && j != k
+	                if normal_form(comm(current_hopping_term, parity_term)) != 0*one(σx())
+	                    throw("Error two non-touching terms anticommute $i, $j, $k")
+	                end
+	            end
+	        end
+	    end
+	    return total_pauli_weight/total_hopping_terms
+	end
+	
+	
+	# Testing even fermionic algebra
+	function testing_odd_algebra(PEPO, interaction_graph)
+	    total_pauli_weight = 0
+	    total_hopping_terms = 0
+	    for edge in edges(interaction_graph)
+	        i, j = src(edge), dst(edge)
+	        current_majorana_term = fermionic_X(PEPO,i) 
+	        total_pauli_weight += length(collect(keys(current_majorana_term.terms))[1].bares.v)
+	        total_hopping_terms += 1
+	            other_majorana_term = fermionic_X(PEPO, j)
+	            if (i != j)
+	                if normal_form(comm(current_majorana_term, other_majorana_term)) == 0*one(σx())
+	                    throw("Error two different majoranas commute: $i, $j, $current_majorana_term, $other_majorana_term")
+	                end
+	            if i == j
+	                if normal_form(comm(current_majorana_term, other_majorana_term)) != 0*one(σx())
+	                    throw("Error identical majoranas anticommute $i, $j")
+	                end
+	            end
+	        end
+	    end
+	    return total_pauli_weight/total_hopping_terms
+	end
+	
+	function display_graphs(PEPO, G, interaction_graph)
+	    # display(gplot(G))
+	    println("Interaction Graph")
+	    display(gplot(interaction_graph))
+	
+	    println("PEPO")
+	    display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="blue", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+	    
+	    # display(gplot(PEPO, edgelabel=map((x)-> x[2],sort(collect(PEPO.edge_data), by=x->x[1])), edgelabelc="white", EDGELABELSIZE=8, nodelabel=map((x)-> x[2][1],sort(collect(PEPO.vertex_properties), by=x->x[1]))))
+	end
+	
+	
+	
+	
+	
+end
 
 # ╔═╡ 1121856e-abdb-4127-b4fa-0ae61fc53ca8
 function partial_binary_tree(n::T) where {T<:Integer}
@@ -84,12 +254,12 @@ end
 function get_results(PEPO, interaction_graph)
     results = ""
     try 
-        results *= "Odd algebra average Pauli weight: "* string(PEPOAnalysis.testing_odd_algebra(PEPO, interaction_graph)) *"\n"
+        results *= "Odd algebra average Pauli weight: "* string(testing_odd_algebra(PEPO, interaction_graph)) *"\n"
     catch (e)
         results *= "FAILED ODD ALGEBRA: $e\n"
     end
     try 
-        results *= "Even algebra average Pauli weight: "* string(PEPOAnalysis.testing_even_algebra(PEPO, interaction_graph))
+        results *= "Even algebra average Pauli weight: "* string(testing_even_algebra(PEPO, interaction_graph))
     catch (e)
         results *= "FAILED EVEN ALGEBRA: $e"
     end
@@ -628,11 +798,11 @@ version = "17.4.0+0"
 # ╔═╡ Cell order:
 # ╠═e8cefc27-3c69-435d-a9cf-74ac7c785bc9
 # ╟─2cfc8f8e-f028-4f4f-ab80-70330e380d5a
-# ╟─1121856e-abdb-4127-b4fa-0ae61fc53ca8
-# ╟─f696fbef-9293-4b3a-bd78-33b8e2fdcc57
-# ╟─d2dd858c-b983-476a-b10f-89ca16893fd3
-# ╟─33cbb434-5d69-4350-9e1c-d58033a5b7b0
-# ╟─165753ac-c6b3-46a7-b3b4-36a77904f772
+# ╠═1121856e-abdb-4127-b4fa-0ae61fc53ca8
+# ╠═f696fbef-9293-4b3a-bd78-33b8e2fdcc57
+# ╠═d2dd858c-b983-476a-b10f-89ca16893fd3
+# ╠═33cbb434-5d69-4350-9e1c-d58033a5b7b0
+# ╠═165753ac-c6b3-46a7-b3b4-36a77904f772
 # ╟─1ca011df-1af9-4b10-9d22-520a1e6b2d74
 # ╟─1e4973ac-d31a-4350-8750-7d2f425b0806
 # ╟─6fd7a28b-13ed-4b98-9c2d-144300dc366d
