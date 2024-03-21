@@ -240,7 +240,7 @@ function get_graphs(interaction_graph_selection,PEPO_graph_selection, num_of_fer
     end
 
 
-    PEPO = PEPOAnalysis.convert_to_PEPO(PEPO_graph, defect[])
+    PEPO = convert_to_PEPO(PEPO_graph, defect[])
 
     if (!is_connected(PEPO_graph))
         throw("Not connected")
@@ -275,11 +275,11 @@ function example_operator(PEPO,interaction_graph,defect)
     operators = 0
     if defect[]
         vertex = rand(collect(vertices(interaction_graph)))
-        operators = PEPOAnalysis.fermionic_X(PEPO, vertex)
+        operators = fermionic_X(PEPO, vertex)
         vertex_colors[vertex] = "black"
     else
         edge = rand(collect(edges(interaction_graph)))
-        operators = PEPOAnalysis.fermionic_XX(PEPO, src(edge), dst(edge))
+        operators = fermionic_XX(PEPO, src(edge), dst(edge))
         vertex_colors[src(edge)] = "black"
         vertex_colors[dst(edge)] = "black"
     end
