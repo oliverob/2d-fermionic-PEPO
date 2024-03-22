@@ -349,7 +349,7 @@ Compose = "~0.9.5"
 GraphPlot = "~0.5.2"
 Graphs = "~1.9.0"
 MetaGraphsNext = "~0.7.0"
-PlutoUI = "~0.7.57"
+PlutoUI = "~0.7.54"
 QuantumAlgebra = "~1.3.1"
 """
 
@@ -638,7 +638,7 @@ version = "1.9.2"
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
 git-tree-sha1 = "a6783c887ca59ce7e97ed630b74ca1f10aefb74d"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.57"
+version = "0.7.54"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
